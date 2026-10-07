@@ -1,21 +1,95 @@
+using Api.Entities.Models;
+using Api.Handlers.Exceptions;
 using Api.Persistence;
 using Api.Services;
 using Api.Services.Contracts;
 using Microsoft.EntityFrameworkCore;
+using Serilog;
+using Shared.DataTransferObject;
 
-var builder = WebApplication.CreateBuilder(args);
+Log.Logger = new LoggerConfiguration()
+    .WriteTo.Console()
+    .CreateBootstrapLogger();
 
-builder.Services.AddDbContext<ApiContext>(options => options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
-builder.Services.AddScoped<IProductService, ProductService>();
+try
+{
+    Log.Information("Starting web application...");
 
-builder.Services.AddControllers();
+    var builder = WebApplication.CreateBuilder(args);
 
-var app = builder.Build();
+    builder.Host.UseSerilog((context, services, configuration) =>
+            configuration
+                .ReadFrom.Configuration(context.Configuration)
+                .ReadFrom.Services(services)
+                .Enrich.FromLogContext()
+                .WriteTo.Console()
+            );
 
-app.UseHttpsRedirection();
+    builder.Services.AddCors(options =>
+    {
+        options.AddPolicy("CorsPolicy", policy =>
+        {
+            policy
+                .AllowAnyOrigin()
+                .AllowAnyHeader()
+                .AllowAnyMethod();
+        });
+    });
+    builder.Services.AddDbContext<ApiContext>(options => options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+    builder.Services.AddScoped<IProductService, ProductService>();
+    builder.Services.AddAutoMapper(configuration =>
+    {
+        configuration.CreateMap<Product, ProductDto>();
+    }, typeof(Program));
 
-app.UseAuthorization();
+    builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
+    builder.Services.AddProblemDetails();
+    builder.Services.AddControllers();
+    builder.Services.AddOpenApi();
 
-app.MapControllers();
+    var app = builder.Build();
 
-app.Run();
+    using (var scope = app.Services.CreateScope())
+    {
+        var services = scope.ServiceProvider;
+        try
+        {
+            var context = services.GetRequiredService<ApiContext>();
+            context.Database.Migrate();
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "An error occured while migrating the database...");
+        }
+    }
+
+    app.MapOpenApi();
+
+    app.UseSwaggerUI(options =>
+    {
+        options.SwaggerEndpoint("/openapi/v1.json", "Tindahan API v1");
+        options.RoutePrefix = string.Empty;
+    });
+
+    app.UseExceptionHandler();
+
+    // app.UseHttpsRedirection();
+
+    app.UseSerilogRequestLogging();
+
+    app.UseCors("CorsPolicy");
+
+    app.UseAuthorization();
+
+    app.MapControllers();
+
+    app.Run();
+}
+catch (Exception ex)
+{
+    Log.Fatal(ex, "Application terminated unexpectedly");
+}
+finally
+{
+    Log.CloseAndFlush();
+}
