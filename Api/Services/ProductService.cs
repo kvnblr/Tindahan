@@ -1,35 +1,32 @@
+using Api.Entities.ExceptionModel;
 using Api.Persistence;
 using Api.Services.Contracts;
+using AutoMapper;
 using Microsoft.EntityFrameworkCore;
 using Shared.DataTransferObject;
 
 namespace Api.Services;
 
-public class ProductService(ApiContext context) : IProductService
+public class ProductService(ApiContext context, IMapper mapper) : IProductService
 {
     public async Task<ProductDto> GetProductAsync(int id)
     {
-        var product = await context.Products.AsNoTracking().FirstOrDefaultAsync();
-        var productDto = new ProductDto
-        {
-            Id = product.Id,
-            Name = product.Name,
-            Price = product.Price,
-            Stock = product.Stock
-        };
+        var product = await context.Products
+                .AsNoTracking()
+                .Where(p => p.Id == id)
+                .FirstOrDefaultAsync()
+            ?? throw new ProductNotFoundException(id);
+
+        var productDto = mapper.Map<ProductDto>(product);
         return productDto;
     }
 
     public async Task<IEnumerable<ProductDto>> GetProductsAsync()
     {
-        var products = await context.Products.AsNoTracking().ToListAsync();
-        var productsDto = products.Select(p => new ProductDto
-        {
-            Id = p.Id,
-            Name = p.Name,
-            Price = p.Price,
-            Stock = p.Stock
-        }).ToList();
+        var products = await context.Products
+                .AsNoTracking()
+                .ToListAsync();
+        var productsDto = mapper.Map<IEnumerable<ProductDto>>(products);
         return productsDto;
     }
 }
