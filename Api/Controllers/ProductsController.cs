@@ -1,7 +1,5 @@
-using Api.Persistence;
 using Api.Services.Contracts;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 
 namespace Api.Controllers;
 
@@ -19,7 +17,7 @@ public class ProductsController(
     }
 
     [HttpGet("{id:int}")]
-    public async Task<IActionResult> GetProductById(int id)
+    public async Task<IActionResult> GetProductById([FromRoute] int id)
     {
         var product = await service.GetProductAsync(id);
         return Ok(product);
