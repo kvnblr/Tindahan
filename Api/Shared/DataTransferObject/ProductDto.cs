@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace Shared.DataTransferObject;
+namespace Api.Shared.DataTransferObject;
 
 public record ProductDto
 {
