@@ -12,6 +12,11 @@ public class ApiContext(DbContextOptions<ApiContext> options)
     {
         base.OnModelCreating(modelBuilder);
 
+        modelBuilder.Entity<Product>(entity =>
+        {
+            entity.HasIndex(p => p.Name).IsUnique();
+        });
+
         modelBuilder.Entity<Product>()
             .Property(p => p.Price)
             .HasPrecision(18, 2);
