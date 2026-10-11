@@ -13,6 +13,7 @@ public class GlobalExceptionHandler(IHostEnvironment environment, ILogger<Global
     {
         var (statusCode, title) = exception switch
         {
+            ConflictException => (StatusCodes.Status409Conflict, "Conflict"),
             NotFoundException => (StatusCodes.Status404NotFound, "Not Found"),
             _ => (StatusCodes.Status500InternalServerError, "Internal Server Error")
         };
