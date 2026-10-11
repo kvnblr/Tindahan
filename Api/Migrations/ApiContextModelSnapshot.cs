@@ -43,6 +43,9 @@ namespace Api.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("Name")
+                        .IsUnique();
+
                     b.ToTable("Products");
 
                     b.HasData(
