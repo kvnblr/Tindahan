@@ -25,10 +25,10 @@ public class ProductsController(
     }
 
     [HttpPost]
-    public async Task<IActionResult> CreateProduct([FromBody] CreateProductDto productDto, CancellationToken cancellationToken)
+    public async Task<IActionResult> CreateProduct([FromBody] CreateProductDto createProductDto, CancellationToken cancellationToken)
     {
-        if (productDto == null) return BadRequest("product is null");
-        var product = await service.CreateProductAsync(productDto, cancellationToken);
+        if (createProductDto == null) return BadRequest("product is null");
+        var product = await service.CreateProductAsync(createProductDto, cancellationToken);
         return CreatedAtRoute(nameof(GetProductById), new { id = product.Id }, product);
     }
 
@@ -36,6 +36,14 @@ public class ProductsController(
     public async Task<IActionResult> DeleteProduct([FromRoute] int id, CancellationToken cancellationToken)
     {
         await service.DeleteProductAsync(id, cancellationToken);
+        return NoContent();
+    }
+
+    [HttpPut("{id:int}")]
+    public async Task<IActionResult> UpdateProduct([FromRoute] int id, [FromBody] UpdateProductDto updateProductDto, CancellationToken cancellationToken)
+    {
+        if (updateProductDto == null) return BadRequest("product is null");
+        await service.UpdateProductAsync(id, updateProductDto, cancellationToken);
         return NoContent();
     }
 }

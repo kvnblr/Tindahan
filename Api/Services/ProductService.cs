@@ -37,8 +37,7 @@ public class ProductService(ApiContext context, IMapper mapper) : IProductServic
     {
         var product = await context.Products
                 .AsNoTracking()
-                .Where(p => p.Id == id)
-                .FirstOrDefaultAsync(cancellationToken)
+                .FirstOrDefaultAsync(p => p.Id == id, cancellationToken)
             ?? throw new ProductNotFoundException(id);
 
         var productDto = mapper.Map<ProductDto>(product);
@@ -64,9 +63,21 @@ public class ProductService(ApiContext context, IMapper mapper) : IProductServic
             throw new ProductNotFoundException(id);
     }
 
+    public async Task UpdateProductAsync(int id, UpdateProductDto updateProductDto, CancellationToken cancellationToken)
+    {
+
+        var product = await context.Products
+                .FirstOrDefaultAsync(p => p.Id == id, cancellationToken)
+            ?? throw new ProductNotFoundException(id);
+
+        mapper.Map(updateProductDto, product);
+        await context.SaveChangesAsync(cancellationToken);
+    }
+
     private static bool IsUniqueConstraintViolation(DbUpdateException ex)
     {
         return ex.InnerException is SqlException sqlException
             && (sqlException.Number == 2601 || sqlException.Number == 2627);
     }
+
 }
