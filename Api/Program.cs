@@ -3,9 +3,9 @@ using Api.Handlers.Exceptions;
 using Api.Persistence;
 using Api.Services;
 using Api.Services.Contracts;
+using Api.Shared.DataTransferObject;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
-using Shared.DataTransferObject;
 
 Log.Logger = new LoggerConfiguration()
     .WriteTo.Console()
@@ -40,6 +40,7 @@ try
     builder.Services.AddAutoMapper(configuration =>
     {
         configuration.CreateMap<Product, ProductDto>();
+        configuration.CreateMap<CreateProductDto, Product>();
     }, typeof(Program));
 
     builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
