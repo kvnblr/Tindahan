@@ -54,6 +54,16 @@ public class ProductService(ApiContext context, IMapper mapper) : IProductServic
         return productsDto;
     }
 
+    public async Task DeleteProductAsync(int id, CancellationToken cancellationToken)
+    {
+        var deleteRows = await context.Products
+                .Where(p => p.Id == id)
+                .ExecuteDeleteAsync(cancellationToken);
+
+        if (deleteRows == 0)
+            throw new ProductNotFoundException(id);
+    }
+
     private static bool IsUniqueConstraintViolation(DbUpdateException ex)
     {
         return ex.InnerException is SqlException sqlException

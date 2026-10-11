@@ -31,4 +31,11 @@ public class ProductsController(
         var product = await service.CreateProductAsync(productDto, cancellationToken);
         return CreatedAtRoute(nameof(GetProductById), new { id = product.Id }, product);
     }
+
+    [HttpDelete("{id:int}")]
+    public async Task<IActionResult> DeleteProduct([FromRoute] int id, CancellationToken cancellationToken)
+    {
+        await service.DeleteProductAsync(id, cancellationToken);
+        return NoContent();
+    }
 }
