@@ -13,9 +13,9 @@ public class ProductsController(
         ) : ControllerBase
 {
     [HttpGet]
-    public async Task<IActionResult> GetAllProducts(CancellationToken cancellationToken)
+    public async Task<IActionResult> GetAllProducts([FromQuery] RequestParametersDto requestParametersDto, CancellationToken cancellationToken)
     {
-        var products = await service.GetProductsAsync(cancellationToken);
+        var products = await service.GetProductsAsync(requestParametersDto, cancellationToken);
         return Ok(products);
     }
 

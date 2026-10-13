@@ -3,6 +3,7 @@ using Api.Entities.Models;
 using Api.Persistence;
 using Api.Services.Contracts;
 using Api.Shared.DataTransferObject;
+using Api.Shared.DataTransferObject.Common;
 using AutoMapper;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
@@ -44,13 +45,54 @@ public class ProductService(ApiContext context, IMapper mapper) : IProductServic
         return productDto;
     }
 
-    public async Task<IEnumerable<ProductDto>> GetProductsAsync(CancellationToken cancellationToken)
+    public async Task<PagedResult<ProductDto>> GetProductsAsync(RequestParametersDto request, CancellationToken cancellationToken)
     {
-        var products = await context.Products
-                .AsNoTracking()
+        var query = context.Products.AsNoTracking();
+        if (!string.IsNullOrWhiteSpace(request.SearchTerm))
+            query = query.Where(p => p.Name != null && p.Name.Contains(request.SearchTerm));
+
+        if (request.MinimumPrice.HasValue)
+            query = query.Where(p => p.Price >= request.MinimumPrice.Value);
+
+        if (request.MaxPrice.HasValue)
+            query = query.Where(p => p.Price <= request.MaxPrice.Value);
+
+        var totalCount = await query.CountAsync(cancellationToken);
+        var totalPages = (int)Math.Ceiling((double)totalCount / request.PageSize);
+
+        query = request.SortBy.ToLowerInvariant() switch
+        {
+            "name" => request.SortDescending
+                ? query.OrderByDescending(p => p.Name).ThenBy(p => p.Id)
+                : query.OrderBy(p => p.Name).ThenBy(p => p.Id),
+
+            "price" => request.SortDescending
+                ? query.OrderByDescending(p => p.Price).ThenBy(p => p.Id)
+                : query.OrderBy(p => p.Price).ThenBy(p => p.Id),
+
+            "id" => request.SortDescending
+                ? query.OrderByDescending(p => p.Id)
+                : query.OrderBy(p => p.Id),
+
+            _ => query.OrderBy(p => p.Name).ThenBy(p => p.Id)
+        };
+
+        var offset = (int)(((long)request.PageNumber - 1) * request.PageSize);
+        var products = await query
+                .Skip(offset)
+                .Take(request.PageSize)
                 .ToListAsync(cancellationToken);
+
         var productsDto = mapper.Map<IEnumerable<ProductDto>>(products);
-        return productsDto;
+
+        return new PagedResult<ProductDto>
+        {
+            Items = productsDto,
+            PageNumber = request.PageNumber,
+            PageSize = request.PageSize,
+            TotalCount = totalCount,
+            TotalPages = totalPages
+        };
     }
 
     public async Task DeleteProductAsync(int id, CancellationToken cancellationToken)
