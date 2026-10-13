@@ -13,13 +13,14 @@ public class GlobalExceptionHandler(IHostEnvironment environment, ILogger<Global
     {
         var (statusCode, title) = exception switch
         {
+            BadRequestException => (StatusCodes.Status400BadRequest, "Bad Request"),
             ConflictException => (StatusCodes.Status409Conflict, "Conflict"),
             NotFoundException => (StatusCodes.Status404NotFound, "Not Found"),
             _ => (StatusCodes.Status500InternalServerError, "Internal Server Error")
         };
 
         if (statusCode >= 500)
-            logger.LogError("An unexpected error occurred: {Message}", exception.Message);
+            logger.LogError("An unexpected error occurred.");
         else
             logger.LogWarning("A client error occurred ({StatusCode}): {Message}", statusCode, exception.Message);
 
