@@ -42,7 +42,8 @@ try
         configuration.CreateMap<Product, ProductDto>();
         configuration.CreateMap<CreateProductDto, Product>();
         configuration.CreateMap<UpdateProductDto, Product>()
-            .ForMember(destinationMember => destinationMember.Id, options => options.Ignore());
+            .ForMember(destinationMember => destinationMember.Id, options => options.Ignore())
+            .ReverseMap();
     }, typeof(Program));
 
     builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
