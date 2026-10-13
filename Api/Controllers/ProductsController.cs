@@ -1,5 +1,7 @@
+using Api.Entities.ExceptionModel;
 using Api.Services.Contracts;
 using Api.Shared.DataTransferObject;
+using Microsoft.AspNetCore.JsonPatch.SystemTextJson;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Api.Controllers;
@@ -44,6 +46,26 @@ public class ProductsController(
     {
         if (updateProductDto == null) return BadRequest("product is null");
         await service.UpdateProductAsync(id, updateProductDto, cancellationToken);
+        return NoContent();
+    }
+
+    [HttpPatch("{id:int}")]
+    public async Task<IActionResult> PartialUpdateProduct([FromRoute] int id, [FromBody] JsonPatchDocument<UpdateProductDto> patchDocument, CancellationToken cancellationToken)
+    {
+        if (patchDocument is null)
+            throw new PatchBadRequestException("Patch document is required.");
+
+        var (productToPatch, product) = await service.PartialUpdateProductAsync(id, cancellationToken);
+        var patchErrors = new List<string>();
+        patchDocument.ApplyTo(productToPatch, error => patchErrors.Add(error.ErrorMessage));
+
+        if (patchErrors.Count > 0)
+            throw new PatchBadRequestException($"Invalid patch operation: {string.Join("; ", patchErrors)}");
+
+        if (!TryValidateModel(productToPatch))
+            return UnprocessableEntity();
+
+        await service.SaveChangesForPatchAsync(productToPatch, product, cancellationToken);
         return NoContent();
     }
 }

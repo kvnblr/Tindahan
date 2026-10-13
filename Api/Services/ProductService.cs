@@ -80,4 +80,20 @@ public class ProductService(ApiContext context, IMapper mapper) : IProductServic
             && (sqlException.Number == 2601 || sqlException.Number == 2627);
     }
 
+    public async Task<(UpdateProductDto productToPatch, Product product)> PartialUpdateProductAsync(int id, CancellationToken cancellationToken)
+    {
+        var product = await context.Products
+                .FirstOrDefaultAsync(p => p.Id == id, cancellationToken)
+            ?? throw new ProductNotFoundException(id);
+
+        var productToPatch = mapper.Map<UpdateProductDto>(product);
+
+        return (productToPatch, product);
+    }
+
+    public async Task SaveChangesForPatchAsync(UpdateProductDto updateProduct, Product product, CancellationToken cancellationToken)
+    {
+        mapper.Map(updateProduct, product);
+        await context.SaveChangesAsync(cancellationToken);
+    }
 }
