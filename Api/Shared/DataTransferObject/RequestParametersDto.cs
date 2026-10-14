@@ -4,6 +4,11 @@ namespace Api.Shared.DataTransferObject;
 
 public sealed record RequestParametersDto : IValidatableObject
 {
+    private static readonly HashSet<string> AllowedSortFields = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "id", "name", "price"
+    };
+
     [Range(1, 50, ErrorMessage = "Page size must be between 1 - 50.")]
     public int PageSize { get; init; } = 5;
 
@@ -12,20 +17,19 @@ public sealed record RequestParametersDto : IValidatableObject
 
     public string? SearchTerm { get; init; } = string.Empty;
 
-    public string SortBy { get; init; } = "name";
+    public string SortBy { get; init; } = "id";
 
     public bool SortDescending { get; init; }
 
-    [Range(typeof(decimal), "0", "7922816251426433759354395033")]
+    [Range(typeof(decimal), "0", "79228162514264337593543950335")]
     public decimal? MinimumPrice { get; init; }
 
-    [Range(typeof(decimal), "0", "7922816251426433759354395033")]
+    [Range(typeof(decimal), "0", "79228162514264337593543950335")]
     public decimal? MaxPrice { get; init; }
 
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
     {
-        var allowedSortFields = new[] { "name", "price", "id" };
-        if (!allowedSortFields.Contains(SortBy ?? string.Empty, StringComparer.OrdinalIgnoreCase))
+        if (string.IsNullOrWhiteSpace(SortBy) || !AllowedSortFields.Contains(SortBy.Trim()))
             yield return new ValidationResult("Sort must be name, price, or id", [nameof(SortBy)]);
 
         if (MinimumPrice.HasValue && MaxPrice.HasValue && MinimumPrice.Value > MaxPrice.Value)

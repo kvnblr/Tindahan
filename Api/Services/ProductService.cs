@@ -49,7 +49,7 @@ public class ProductService(ApiContext context, IMapper mapper) : IProductServic
     {
         var query = context.Products.AsNoTracking();
         if (!string.IsNullOrWhiteSpace(request.SearchTerm))
-            query = query.Where(p => p.Name != null && p.Name.Contains(request.SearchTerm));
+            query = query.Where(p => p.Name != null && p.Name.Contains(request.SearchTerm.Trim()));
 
         if (request.MinimumPrice.HasValue)
             query = query.Where(p => p.Price >= request.MinimumPrice.Value);
@@ -57,10 +57,8 @@ public class ProductService(ApiContext context, IMapper mapper) : IProductServic
         if (request.MaxPrice.HasValue)
             query = query.Where(p => p.Price <= request.MaxPrice.Value);
 
-        var totalCount = await query.CountAsync(cancellationToken);
-        var totalPages = (int)Math.Ceiling((double)totalCount / request.PageSize);
-
-        query = request.SortBy.ToLowerInvariant() switch
+        var sortBy = request.SortBy?.Trim().ToLowerInvariant() ?? "id";
+        query = sortBy switch
         {
             "name" => request.SortDescending
                 ? query.OrderByDescending(p => p.Name).ThenBy(p => p.Id)
@@ -74,12 +72,18 @@ public class ProductService(ApiContext context, IMapper mapper) : IProductServic
                 ? query.OrderByDescending(p => p.Id)
                 : query.OrderBy(p => p.Id),
 
-            _ => query.OrderBy(p => p.Name).ThenBy(p => p.Id)
+            _ => throw new SortByArgumentException()
         };
 
-        var offset = (int)(((long)request.PageNumber - 1) * request.PageSize);
+        var offset = ((long)request.PageNumber - 1) * request.PageSize;
+        if (offset > int.MaxValue)
+            throw new OffsetArgumentOutOfRangeException();
+
+        var totalCount = await query.CountAsync(cancellationToken);
+        var totalPages = (int)Math.Ceiling((double)totalCount / request.PageSize);
+
         var products = await query
-                .Skip(offset)
+                .Skip((int)offset)
                 .Take(request.PageSize)
                 .ToListAsync(cancellationToken);
 
