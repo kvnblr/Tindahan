@@ -37,6 +37,7 @@ try
     });
     builder.Services.AddDbContext<ApiContext>(options => options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
     builder.Services.AddScoped<IProductService, ProductService>();
+    builder.Services.AddScoped<ILinkService, LinkService>();
     builder.Services.AddAutoMapper(configuration =>
     {
         configuration.CreateMap<Product, ProductDto>();
