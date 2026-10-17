@@ -1,10 +1,13 @@
 using Api.Entities.Models;
 using Api.Handlers.Exceptions;
+using Api.Health;
 using Api.Persistence;
 using Api.Services;
 using Api.Services.Contracts;
 using Api.Shared.DataTransferObject;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Serilog;
 
 Log.Logger = new LoggerConfiguration()
@@ -52,6 +55,20 @@ try
     builder.Services.AddControllers();
     builder.Services.AddOpenApi();
 
+    var sqlTimeoutSeconds = builder.Configuration.GetValue("HealthChecks:SqlTimeoutSeconds", 3);
+    if (sqlTimeoutSeconds <= 0)
+        throw new InvalidOperationException("SQL health-check timeout must be greater than zero.");
+    builder.Services
+        .AddHealthChecks()
+        .AddCheck("self", () => HealthCheckResult.Healthy(), tags: ["live", "ready"])
+        .AddSqlServer(
+                connectionString: builder.Configuration.GetConnectionString("DefaultConnection") ?? throw new InvalidOperationException("Database connection invalid."),
+                healthQuery: "SELECT 1",
+                name: "sql-server",
+                failureStatus: HealthStatus.Unhealthy,
+                tags: ["ready", "database"],
+                timeout: TimeSpan.FromSeconds(sqlTimeoutSeconds)
+                );
     var app = builder.Build();
 
     using (var scope = app.Services.CreateScope())
@@ -87,6 +104,34 @@ try
     app.UseAuthorization();
 
     app.MapControllers();
+
+    app.MapHealthChecks("/health",
+        new HealthCheckOptions
+        {
+            ResponseWriter = HealthResponseWriter.WriteResponse,
+            AllowCachingResponses = false,
+            ResultStatusCodes =
+            {
+                [HealthStatus.Healthy] = StatusCodes.Status200OK,
+                [HealthStatus.Degraded] = StatusCodes.Status200OK,
+                [HealthStatus.Unhealthy] = StatusCodes.Status503ServiceUnavailable
+            }
+        }
+    );
+
+    app.MapHealthChecks("/health/live", new HealthCheckOptions
+    {
+        Predicate = check => check.Tags.Contains("live"),
+        ResponseWriter = HealthResponseWriter.WriteResponse,
+        AllowCachingResponses = false,
+    });
+
+    app.MapHealthChecks("/health/ready", new HealthCheckOptions
+    {
+        Predicate = check => check.Tags.Contains("ready"),
+        ResponseWriter = HealthResponseWriter.WriteResponse,
+        AllowCachingResponses = false
+    });
 
     app.Run();
 }
