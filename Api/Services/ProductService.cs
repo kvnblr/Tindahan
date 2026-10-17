@@ -91,7 +91,7 @@ public class ProductService(ApiContext context, IMapper mapper) : IProductServic
 
         return new PagedResult<ProductDto>
         {
-            Items = productsDto,
+            Items = [.. productsDto],
             PageNumber = request.PageNumber,
             PageSize = request.PageSize,
             TotalCount = totalCount,
